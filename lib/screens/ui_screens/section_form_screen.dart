@@ -168,8 +168,8 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
     prettyPrintJson(structuredResponses);
 
     // Send to API
-    final url = 'https://meiari-qns-be.onrender.com/api/surveys/submit';
-
+    final url = 'http://127.0.0.1:8000/app/generate-and-upload-report/';
+    print("Sending request to $url...");
     try {
       final response = await http.post(
         Uri.parse(url),

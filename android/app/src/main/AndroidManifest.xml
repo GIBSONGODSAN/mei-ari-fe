@@ -2,10 +2,16 @@
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
         <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
         <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+        <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+        <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+
     <application
         android:label="meiarife"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true">
+    
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,6 +39,9 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <meta-data android:name="android.hardware.biometric" android:value="true"/>
+
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

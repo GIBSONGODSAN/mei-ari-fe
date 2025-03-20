@@ -5,6 +5,7 @@ import 'package:meiarife/screens/geo_locator/get_location_cubit.dart';
 import 'package:meiarife/screens/geo_locator/home.dart';
 import 'package:meiarife/screens/ui_screens/homescreen.dart';
 import 'package:meiarife/screens/ui_screens/department_list_screen.dart';
+import 'package:meiarife/screens/fingerprint/auth_part.dart';
 
 List<CameraDescription> cameras = [];
 
@@ -39,7 +40,8 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/home': (context) => HomeScreen(),
-        '/': (context) => DepartmentListScreen(),
+        '/department': (context) => DepartmentListScreen(),
+        '/': (context) => AuthPath(),
       },
     );
   }
