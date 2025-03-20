@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 class SectionFormScreen extends StatefulWidget {
   final String departmentId;
 
-  SectionFormScreen({required this.departmentId});
+  const SectionFormScreen({super.key, required this.departmentId});
 
   @override
   _SectionFormScreenState createState() => _SectionFormScreenState();
@@ -199,8 +199,9 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading)
+    if (isLoading) {
       return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(sections[currentSectionIndex]['name'])),

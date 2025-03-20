@@ -4,7 +4,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:meiarife/screens/fingerprint/home_page.dart';
 
 class AuthPath extends StatefulWidget {
-  const AuthPath({Key? key}) : super(key: key);
+  const AuthPath({super.key});
 
   @override
   _AuthPathState createState() => _AuthPathState();
@@ -80,7 +80,6 @@ class _AuthPathState extends State<AuthPath> {
             height: 70,
             width: MediaQuery.of(context).size.width,
             child: ElevatedButton(
-              child: const Text('Check Auth'),
               onPressed: () {
                 _checkBio();
               },
@@ -88,6 +87,7 @@ class _AuthPathState extends State<AuthPath> {
                 shape: const StadiumBorder(),
                 backgroundColor: Colors.green,
               ),
+              child: const Text('Check Auth'),
             ),
           ),
         ],
