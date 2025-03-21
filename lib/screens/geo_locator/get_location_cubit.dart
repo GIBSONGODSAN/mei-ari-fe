@@ -10,10 +10,11 @@ class GetLocationCubit extends Cubit<GetLocationState> {
 
   static GetLocationCubit get(context) => BlocProvider.of(context);
 
-  late Position position;
-  late Placemark place;
+  Position? position; // ✅ Nullable to prevent uninitialized access
+  Placemark? place; // ✅ Nullable to prevent LateInitializationError
 
-  initLocation() async {
+  /// Initialize location services
+  Future<void> initLocation() async {
     bool isServiceEnabled;
     LocationPermission permission;
 
@@ -25,29 +26,40 @@ class GetLocationCubit extends Cubit<GetLocationState> {
     }
 
     if (permission == LocationPermission.deniedForever) {
-      return Future.error('denied forever');
+      return Future.error('Location permission denied forever');
     } else if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        return Future.error('denied');
+        return Future.error('Location permission denied');
       }
     }
   }
 
-  Future<Position> getLocation() async {
-    await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
-        .then((position) {
-          this.position = position;
-        })
-        .catchError((error) {});
-    return position;
+  /// Get the current location
+  Future<Position?> getLocation() async {
+    try {
+      Position loc = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      position = loc; // ✅ Ensure position is assigned
+      return position;
+    } catch (error) {
+      emit(LocationFail("Error fetching location: $error"));
+      return null;
+    }
   }
 
+  /// Get the country and city based on coordinates
   Future<Placemark?> getCountry() async {
     emit(LocationLoading());
 
     try {
       Position? loc = await getLocation();
+
+      if (loc == null) {
+        emit(LocationFail("Location not available"));
+        return null;
+      }
 
       List<Placemark> places = await placemarkFromCoordinates(
         loc.latitude,
@@ -55,7 +67,7 @@ class GetLocationCubit extends Cubit<GetLocationState> {
       );
 
       if (places.isNotEmpty) {
-        place = places[0];
+        place = places[0]; // ✅ Assign `place`
         emit(LocationSuccess());
         return place;
       } else {

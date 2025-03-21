@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:meiarife/screens/app_screen/department_list_screen.dart';
 
 class LoginPage extends StatefulWidget {
@@ -40,8 +41,12 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200 &&
           responseData['status']['status'] == "Success") {
-        // Store session token (if needed)
-        String token = responseData['session']['token'];
+        // Store session token and access_id
+        String accessId = responseData['data']['access_id'];
+
+        // Save access_id in SharedPreferences
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_id', accessId);
 
         // Proceed with biometric authentication
         _authenticateUser();
@@ -51,6 +56,11 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       _showError("Error: Unable to connect to the server.");
     }
+  }
+
+  Future<String?> getAccessId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_id');
   }
 
   Future<void> _authenticateUser() async {

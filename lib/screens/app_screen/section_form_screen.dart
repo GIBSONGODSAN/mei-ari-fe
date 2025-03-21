@@ -1,6 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:meiarife/screens/geo_locator/get_location_cubit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SectionFormScreen extends StatefulWidget {
   final String departmentId;
@@ -19,7 +23,7 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
   Map<String, Map<String, String>> formResponses = {};
   List<dynamic> fields = [];
   Map<String, TextEditingController> textControllers = {};
-  Map<String, String?> selectedOptions = {};
+  Map<String, int?> selectedOptions = {};
   Map<String, String?> fieldErrors = {};
 
   @override
@@ -111,7 +115,7 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
           }
         } else {
           if (selectedOptions[field['key']] == null) {
-            fieldErrors[field['key']] = "Please select Yes or No";
+            fieldErrors[field['key']] = "Please select a value from 1 to 5";
             isValid = false;
           }
         }
@@ -123,14 +127,16 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
   void nextSection() {
     if (!validateForm()) return;
 
+    // Save responses for the current section
     formResponses[sections[currentSectionIndex]['_id']] = {
       for (var field in fields)
         field['key']:
             isFirstOrLastSection()
                 ? textControllers[field['key']]!.text
-                : selectedOptions[field['key']]!,
+                : selectedOptions[field['key']]?.toString() ?? "",
     };
 
+    // Ensure we do not exceed the list length
     if (currentSectionIndex < sections.length - 1) {
       setState(() {
         currentSectionIndex++;
@@ -144,7 +150,6 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
   void submitForm() async {
     if (!validateForm()) return;
 
-    // Structure the collected responses with section names
     List<Map<String, dynamic>> structuredResponses = [];
 
     for (var section in sections) {
@@ -163,31 +168,74 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
       }
     }
 
-    // Print structured responses in console
-    print("=== FORM SUBMISSION DATA ===");
     prettyPrintJson(structuredResponses);
 
-    // Send to API
-    final url = 'http://127.0.0.1:8000/app/generate-and-upload-report/';
-    print("Sending request to $url...");
+    final url = 'http://192.168.1.5:8000/app/generate-and-upload-report/';
+
     try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? accessId = prefs.getString('access_id');
+
+      if (accessId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Error: Access ID not found. Please login again."),
+          ),
+        );
+        return;
+      }
+
+      var cubit = GetLocationCubit.get(context);
+
+      // ✅ Ensure location services are initialized
+      await cubit.initLocation();
+
+      // ✅ Get location before proceeding
+      Position? position = await cubit.getLocation();
+
+      if (position == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: Unable to fetch location. Please try again."),
+          ),
+        );
+        return;
+      }
+
+      // ✅ Get country after location is retrieved
+      Placemark? place = await cubit.getCountry();
+
+      if (place == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: Unable to fetch location details.")),
+        );
+        return;
+      }
+
       final response = await http.post(
         Uri.parse(url),
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           "departmentId": widget.departmentId,
+          "accessId": accessId,
           "responses": structuredResponses,
+          "location": {
+            "latitude": position.latitude,
+            "longitude": position.longitude,
+            "country": place.country ?? "Unknown",
+            "city": place.locality ?? "Unknown",
+          },
         }),
       );
 
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Form Submitted Successfully!")));
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Form Submitted Successfully!")),
+        );
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Submission Failed! Try again.")),
+          const SnackBar(content: Text("Submission Failed! Try again.")),
         );
       }
     } catch (e) {
@@ -200,63 +248,120 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(sections[currentSectionIndex]['name'])),
-      body: ListView(
-        children: [
-          for (var field in fields)
-            isFirstOrLastSection()
-                ? TextField(
-                  controller: textControllers[field['key']],
-                  decoration: InputDecoration(
-                    labelText: field['key'],
-                    errorText: fieldErrors[field['key']],
-                  ),
-                )
-                : Column(
-                  children: [
-                    Text(field['key']),
-                    Row(
-                      children: [
-                        Radio(
-                          value: "Yes",
-                          groupValue: selectedOptions[field['key']],
-                          onChanged:
-                              (value) => setState(
-                                () => selectedOptions[field['key']] = value,
-                              ),
-                        ),
-                        Text("Yes"),
-                        Radio(
-                          value: "No",
-                          groupValue: selectedOptions[field['key']],
-                          onChanged:
-                              (value) => setState(
-                                () => selectedOptions[field['key']] = value,
-                              ),
-                        ),
-                        Text("No"),
-                      ],
-                    ),
-                  ],
-                ),
-          ElevatedButton(
-            onPressed: nextSection,
-            child: Text(
-              currentSectionIndex == sections.length - 1 ? "Submit" : "Next",
+      appBar: AppBar(
+        title: Text("Section"),
+        backgroundColor: Colors.blueAccent,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Text(
+              sections[currentSectionIndex]['name'],
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
+            Expanded(
+              child: ListView.builder(
+                itemCount: fields.length,
+                itemBuilder: (context, index) {
+                  var field = fields[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child:
+                          isFirstOrLastSection()
+                              ? TextField(
+                                controller: textControllers[field['key']],
+                                decoration: InputDecoration(
+                                  labelText: field['key'],
+                                  errorText: fieldErrors[field['key']],
+                                  border: const OutlineInputBorder(),
+                                ),
+                              )
+                              : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    field['key'],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: List.generate(5, (index) {
+                                      return Column(
+                                        children: [
+                                          Radio(
+                                            value: index + 1,
+                                            groupValue:
+                                                selectedOptions[field['key']],
+                                            onChanged:
+                                                (value) => setState(
+                                                  () =>
+                                                      selectedOptions[field['key']] =
+                                                          value,
+                                                ),
+                                          ),
+                                          Text("${index + 1}"),
+                                        ],
+                                      );
+                                    }),
+                                  ),
+                                ],
+                              ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: nextSection,
+                child: Text(
+                  currentSectionIndex == sections.length - 1
+                      ? "Submit"
+                      : "Next",
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+String toRoman(int number) {
+  const numerals = [
+    ["I", "IV", "V", "IX"],
+    ["X", "XL", "L", "XC"],
+    ["C", "CD", "D", "CM"],
+    ["M", "", "", ""],
+  ];
+  String result = "";
+  int i = 0;
+  while (number > 0) {
+    int digit = number % 10;
+    if (digit > 0) {
+      result = numerals[i][digit - 1] + result;
+    }
+    number ~/= 10;
+    i++;
+  }
+  return result;
+}
+
 void prettyPrintJson(dynamic jsonData) {
-  const int chunkSize = 800; // Print in small chunks to avoid truncation
+  const int chunkSize = 800;
   String jsonString = jsonEncode(jsonData);
   for (int i = 0; i < jsonString.length; i += chunkSize) {
     print(

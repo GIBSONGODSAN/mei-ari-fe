@@ -12,13 +12,23 @@ class DepartmentListScreen extends StatefulWidget {
 
 class _DepartmentListScreenState extends State<DepartmentListScreen> {
   List<dynamic> departments = [];
+  List<dynamic> filteredDepartments = [];
   bool isLoading = true;
   String errorMessage = '';
+  TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     fetchDepartments();
+    searchController.addListener(filterDepartments);
+  }
+
+  @override
+  void dispose() {
+    searchController.removeListener(filterDepartments);
+    searchController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchDepartments() async {
@@ -31,6 +41,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
           departments = data;
+          filteredDepartments = data; // Initial display
           isLoading = false;
         });
       } else {
@@ -45,6 +56,23 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
         isLoading = false;
       });
     }
+  }
+
+  void filterDepartments() {
+    String query = searchController.text.trim().toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        filteredDepartments = departments;
+      } else {
+        filteredDepartments =
+            departments
+                .where(
+                  (dept) =>
+                      dept['departmentName'].toLowerCase().contains(query),
+                ) // Partial match
+                .toList();
+      }
+    });
   }
 
   @override
@@ -96,6 +124,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                 border: Border.all(color: Colors.blue),
               ),
               child: TextField(
+                controller: searchController,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
                   hintText: "Search...",
@@ -130,6 +159,12 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                   ),
                 ),
               )
+            else if (filteredDepartments.isEmpty)
+              Expanded(
+                child: const Center(
+                  child: Text("No matching department found"),
+                ),
+              )
             else
               // Grid layout for department cards
               Expanded(
@@ -140,7 +175,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                     mainAxisSpacing: 10,
                     childAspectRatio: 1,
                   ),
-                  itemCount: departments.length,
+                  itemCount: filteredDepartments.length,
                   itemBuilder: (context, index) {
                     return GestureDetector(
                       onTap: () {
@@ -149,7 +184,8 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                           MaterialPageRoute(
                             builder:
                                 (context) => SectionFormScreen(
-                                  departmentId: departments[index]['_id'],
+                                  departmentId:
+                                      filteredDepartments[index]['_id'],
                                 ),
                           ),
                         );
@@ -170,7 +206,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            departments[index]['departmentName'],
+                            filteredDepartments[index]['departmentName'],
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 16,
