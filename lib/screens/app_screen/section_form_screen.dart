@@ -170,11 +170,15 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
 
     prettyPrintJson(structuredResponses);
 
-    final url = 'http://192.168.1.5:8000/app/generate-and-upload-report/';
+    final url =
+        'http://192.168.107.231:8000/api/v1/generate-and-upload-report/';
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? accessId = prefs.getString('access_id');
+      final departmentName = prefs.getString('department_name') ?? '';
+      final subDepartmentName = prefs.getString('sub_department_name') ?? '';
+      final subDeptOfficeName = prefs.getString('sub_dept_office_name') ?? '';
 
       if (accessId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -219,6 +223,9 @@ class _SectionFormScreenState extends State<SectionFormScreen> {
           "departmentId": widget.departmentId,
           "accessId": accessId,
           "responses": structuredResponses,
+          "departmentName": departmentName,
+          "subDepartmentName": subDepartmentName,
+          "subDeptOfficeName": subDeptOfficeName,
           "location": {
             "latitude": position.latitude,
             "longitude": position.longitude,

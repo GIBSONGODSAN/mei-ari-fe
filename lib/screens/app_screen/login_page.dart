@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:meiarife/screens/app_screen/mainnavigation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:meiarife/screens/app_screen/department_list_screen.dart';
+import 'package:meiarife/screens/app_screen/dashboard_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -28,7 +30,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    final Uri url = Uri.parse("http://192.168.1.5:8000/app/signin/");
+    final Uri url = Uri.parse("http://192.168.107.231:8000/api/v1/signin/");
 
     try {
       final response = await http.post(
@@ -41,14 +43,36 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200 &&
           responseData['status']['status'] == "Success") {
-        // Store session token and access_id
-        String accessId = responseData['data']['access_id'];
+        final session = responseData['session'];
+        final data = responseData['data'];
 
-        // Save access_id in SharedPreferences
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_id', accessId);
 
-        // Proceed with biometric authentication
+        // Store session tokens
+        await prefs.setString('refresh_token', session['refresh']);
+        await prefs.setString('access_token', session['token']);
+        await prefs.setInt('token_validity', session['validity']);
+        if (session['specialMessage'] != null) {
+          await prefs.setString('special_message', session['specialMessage']);
+        }
+
+        // Store user details
+        await prefs.setString('user_id', data['user_id']);
+        await prefs.setString('email', data['email']);
+        await prefs.setString('access_id', data['access_id']);
+        await prefs.setBool('is_active', data['is_active']);
+        await prefs.setString('role', data['role']);
+        await prefs.setString('department_name', data['department_name']);
+        await prefs.setString(
+          'sub_department_name',
+          data['sub_department_name'],
+        );
+        await prefs.setString(
+          'sub_dept_office_name',
+          data['sub_dept_office_name'],
+        );
+
+        // Proceed with biometric auth
         _authenticateUser();
       } else {
         _showError("Login failed: ${responseData['status']['message']}");
@@ -76,7 +100,7 @@ class _LoginPageState extends State<LoginPage> {
       if (isAuthenticated) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => DepartmentListScreen()),
+          MaterialPageRoute(builder: (context) => MainNavigation()),
         );
       } else {
         _showError("Fingerprint authentication failed.");

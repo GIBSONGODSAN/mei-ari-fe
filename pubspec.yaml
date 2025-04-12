@@ -44,9 +44,12 @@ dependencies:
   geocoding: ^3.0.0
   geolocator: ^13.0.2
   meta: ^1.16.0
-  http: ^0.13.6
+  http: ^1.3.0
   local_auth: ^2.3.0
   shared_preferences: ^2.2.2
+  # rich_editor: ^0.0.8
+  # flutter_quill: ^9.3.1
+  signature: ^5.4.1
 
 
 dev_dependencies:
@@ -60,7 +63,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.3
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
